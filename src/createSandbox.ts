@@ -94,17 +94,19 @@ export interface CreateSandboxOptions {
   };
 }
 
-export interface SandboxRunOptions {
-  /** Agent provider to use (e.g. claudeCode("claude-opus-4-7")). */
-  readonly agent: AgentProvider;
-  /** Inline prompt string (mutually exclusive with promptFile). */
-  readonly prompt?: string;
-  /** Path to a prompt file (mutually exclusive with prompt). */
-  readonly promptFile?: string;
+/**
+ * Options accepted by `SandboxRunResult.resume()` / `.fork()`. Mirrors
+ * `ResumeRunResultOptions` in `run.ts` — drops the fields owned by the
+ * captured run (prompt, iteration count, resumeSession/forkSession bookkeeping).
+ *
+ * Defined as the base interface that `SandboxRunOptions` extends — the
+ * interface-extends shape is cheaper for the TS checker than
+ * `Omit<SandboxRunOptions, ...>` (which forces a mapped-type computation
+ * on every reference).
+ */
+export interface ResumeSandboxRunResultOptions {
   /** Key-value map for {{KEY}} placeholder substitution in prompts. */
   readonly promptArgs?: PromptArgs;
-  /** Maximum iterations to run (default: 1). */
-  readonly maxIterations?: number;
   /** Substring(s) the agent emits to stop the iteration loop early. */
   readonly completionSignal?: string | string[];
   /** Idle timeout in seconds. Default: 600. */
@@ -115,18 +117,6 @@ export interface SandboxRunOptions {
   readonly name?: string;
   /** Logging mode. */
   readonly logging?: LoggingOption;
-  /** Resume a prior agent session by id. The session JSONL must exist on the host (captured by a prior `sandbox.run()`). Incompatible with `maxIterations > 1`. */
-  readonly resumeSession?: string;
-  /**
-   * When true alongside `resumeSession`, fork the session instead of mutating
-   * it. The parent session JSONL is left intact and the agent writes a new
-   * session under a fresh id. Exposed as the public `.fork()` method on
-   * `SandboxRunResult` rather than as a stand-alone caller option — see
-   * ADR 0018.
-   *
-   * @internal
-   */
-  readonly forkSession?: boolean;
   /**
    * An `AbortSignal` that cancels the run when aborted.
    *
@@ -139,20 +129,28 @@ export interface SandboxRunOptions {
   readonly signal?: AbortSignal;
 }
 
-/**
- * Options accepted by `SandboxRunResult.resume()` / `.fork()`. Mirrors
- * `ResumeRunResultOptions` in `run.ts` — drops the fields owned by the
- * captured run (prompt, iteration count, resumeSession/forkSession bookkeeping).
- */
-export type ResumeSandboxRunResultOptions = Omit<
-  SandboxRunOptions,
-  | "agent"
-  | "prompt"
-  | "promptFile"
-  | "resumeSession"
-  | "forkSession"
-  | "maxIterations"
->;
+export interface SandboxRunOptions extends ResumeSandboxRunResultOptions {
+  /** Agent provider to use (e.g. claudeCode("claude-opus-4-7")). */
+  readonly agent: AgentProvider;
+  /** Inline prompt string (mutually exclusive with promptFile). */
+  readonly prompt?: string;
+  /** Path to a prompt file (mutually exclusive with prompt). */
+  readonly promptFile?: string;
+  /** Maximum iterations to run (default: 1). */
+  readonly maxIterations?: number;
+  /** Resume a prior agent session by id. The session JSONL must exist on the host (captured by a prior `sandbox.run()`). Incompatible with `maxIterations > 1`. */
+  readonly resumeSession?: string;
+  /**
+   * When true alongside `resumeSession`, fork the session instead of mutating
+   * it. The parent session JSONL is left intact and the agent writes a new
+   * session under a fresh id. Exposed as the public `.fork()` method on
+   * `SandboxRunResult` rather than as a stand-alone caller option — see
+   * ADR 0018.
+   *
+   * @internal
+   */
+  readonly forkSession?: boolean;
+}
 
 export interface SandboxRunResult {
   /** Per-iteration results (use `iterations.length` for the count). */
