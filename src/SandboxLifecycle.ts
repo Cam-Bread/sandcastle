@@ -136,10 +136,15 @@ export const ensureSafeDirectory = <EGet, EAdd>(
     const existing = yield* getExisting(
       "git config --global --get-all safe.directory",
     ).pipe(Effect.catchAll(() => Effect.succeed(NO_SAFE_DIRECTORY_ENTRIES)));
+    // Normalize separators on both sides before comparing: git reports forward
+    // slashes while a no-sandbox host path on Windows can carry backslashes, so
+    // a raw comparison could miss an existing entry and re-add it (#846).
+    const toPosix = (p: string) => p.trim().replace(/\\/g, "/");
+    const target = toPosix(dir);
     const alreadyRegistered = existing.stdout
       .split("\n")
-      .map((line) => line.trim())
-      .includes(dir);
+      .map(toPosix)
+      .includes(target);
     if (alreadyRegistered) return;
     yield* addEntry(`git config --global --add safe.directory "${dir}"`);
   });
